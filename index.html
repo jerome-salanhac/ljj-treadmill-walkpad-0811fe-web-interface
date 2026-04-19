@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Tapis LJJ</title>
+
+<!-- Favicon PNG + SVG fallback -->
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f1419">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tapis LJJ">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2028;
+    --panel-2: #232b36;
+    --border: #2d3744;
+    --text: #e6e9ef;
+    --muted: #8b94a3;
+    --accent: #4f9eff;
+    --accent-hover: #6ab0ff;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --err: #f87171;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh;
+  }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+    .full { grid-column: 1 / -1; }
+  }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px;
+  }
+  .panel h2 {
+    margin: 0 0 10px; font-size: 13px; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--muted);
+  }
+  button {
+    background: var(--accent); color: #000;
+    border: none; border-radius: 6px;
+    padding: 10px 16px; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background 0.15s;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+  button.danger { background: var(--err); color: #000; }
+  button.big { padding: 16px 24px; font-size: 16px; min-width: 100px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .status {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; background: var(--panel-2);
+  }
+  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .status.ok .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .status.warn .dot { background: var(--warn); }
+  .status.err .dot { background: var(--err); }
+  .metrics {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+    margin: 10px 0;
+  }
+  @media (min-width: 600px) {
+    .metrics { grid-template-columns: repeat(4, 1fr); }
+  }
+  .metric {
+    background: var(--panel-2); padding: 12px; border-radius: 8px; text-align: center;
+  }
+  .metric .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .metric .value { font-size: 26px; font-weight: 700; margin-top: 4px; font-family: var(--mono); }
+  .metric .unit { font-size: 12px; color: var(--muted); margin-left: 3px; }
+  .speed-box {
+    background: var(--panel-2); border-radius: 10px; padding: 16px; margin-top: 10px;
+  }
+  .big-speed {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 12px;
+  }
+  .big-speed .value {
+    font-family: var(--mono); font-size: 40px; font-weight: 800;
+    flex: 1; text-align: center; color: var(--accent);
+  }
+  .speed-slider { width: 100%; height: 30px; }
+  .speed-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .speed-presets button { flex: 1; min-width: 55px; padding: 8px 10px; font-size: 13px; }
+  .log {
+    font-family: var(--mono); font-size: 11px;
+    background: #000; color: #0f0;
+    padding: 10px; border-radius: 6px;
+    max-height: 220px; overflow: auto;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  .log .ts { color: #888; }
+  .log .tx { color: #fbbf24; }
+  .log .rx { color: #4ade80; }
+  .log .err { color: #f87171; }
+  .log .info { color: #8bb; }
+  .unsupported {
+    background: var(--err); color: #000; padding: 12px; border-radius: 8px;
+    margin-bottom: 12px; font-weight: 600;
+  }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<h1>🏃 Tapis LJJ — Contrôle</h1>
+<div class="sub">Protocole FitShow adapté pour LJJ-0811FE (LIJIUJIA et compatibles)</div>
+
+<!-- Bannière installation PWA -->
+<div id="install-banner" style="display:none;background:var(--accent);color:#000;padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:14px;font-weight:600;">
+  📱 <span id="install-msg">Installez cette app sur votre appareil pour un accès rapide.</span>
+  <button id="btn-install" style="background:#000;color:var(--accent);margin-left:10px;padding:4px 12px;font-size:13px">Installer</button>
+  <button id="btn-install-close" class="secondary" style="padding:4px 10px;font-size:13px;float:right">×</button>
+</div>
+
+<div id="unsupported" class="unsupported" style="display:none">
+  ⚠️ Web Bluetooth n'est pas disponible. Utilisez Chrome, Edge ou Opera sur Android ou Desktop (page servie en HTTPS ou via localhost).
+</div>
+
+<div class="grid">
+
+  <!-- CONNEXION -->
+  <div class="panel full">
+    <div class="row" style="justify-content:space-between">
+      <div class="row">
+        <button id="btn-connect">🔗 Connecter le tapis</button>
+        <button id="btn-disconnect" class="secondary" disabled>Déconnecter</button>
+      </div>
+      <span id="status" class="status"><span class="dot"></span><span id="status-text">Non connecté</span></span>
+    </div>
+  </div>
+
+  <!-- CONTRÔLE -->
+  <div class="panel" id="panel-control">
+    <h2>Contrôle</h2>
+    <div class="row" style="justify-content:center">
+      <button id="btn-wake" class="big secondary" disabled title="Réveil par BLE (ne fonctionne PAS en veille profonde — attendre un réveil spontané du tapis)">⏰ Wake</button>
+      <button id="btn-start" class="big" disabled>▶ Start</button>
+      <button id="btn-stop" class="big danger" disabled>⏹ Stop</button>
+    </div>
+
+    <div class="speed-box">
+      <div class="big-speed">
+        <button id="btn-sp-down" class="secondary" disabled>−</button>
+        <div class="value"><span id="speed-setpoint">1.0</span> <span style="font-size:16px;color:var(--muted)">km/h</span></div>
+        <button id="btn-sp-up" class="secondary" disabled>+</button>
+      </div>
+      <input type="range" id="speed-slider" class="speed-slider" min="1" max="8" step="0.5" value="1" disabled>
+      <div class="speed-presets">
+        <button data-speed="1" class="secondary" disabled>1</button>
+        <button data-speed="2" class="secondary" disabled>2</button>
+        <button data-speed="3" class="secondary" disabled>3</button>
+        <button data-speed="4" class="secondary" disabled>4</button>
+        <button data-speed="5" class="secondary" disabled>5</button>
+        <button data-speed="6" class="secondary" disabled>6</button>
+      </div>
+    </div>
+    <div class="hint">
+      La commande de vitesse n'est envoyée que lorsque le tapis est en marche (après Start).
+    </div>
+  </div>
+
+  <!-- MÉTRIQUES -->
+  <div class="panel">
+    <h2>Métriques live</h2>
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">Vitesse</div>
+        <div class="value"><span id="m-speed">—</span><span class="unit">km/h</span></div>
+      </div>
+      <div class="metric">
+        <div class="label">Temps</div>
+        <div class="value" id="m-time">—</div>
+      </div>
+      <div class="metric">
+        <div class="label">Distance</div>
+        <div class="value"><span id="m-dist">—</span><span class="unit">km</span></div>
+      </div>
+      <div class="metric">
+        <div class="label">Calories</div>
+        <div class="value"><span id="m-cal">—</span><span class="unit">kcal</span></div>
+      </div>
+    </div>
+    <div class="hint" id="tapis-status">État : non connecté</div>
+    <details style="margin-top:8px">
+      <summary>🔍 Debug trame running (dernière reçue)</summary>
+      <div id="debug-frame" style="font-family:var(--mono);font-size:11px;background:var(--panel-2);padding:8px;border-radius:4px;margin-top:6px;white-space:pre-wrap"></div>
+    </details>
+  </div>
+
+  <!-- LOG -->
+  <div class="panel full">
+    <h2>Journal BLE
+      <label style="float:right;font-size:11px;font-weight:400;color:var(--muted);margin-left:8px">
+        <input type="checkbox" id="filter-poll" checked> Masquer polling
+      </label>
+      <button id="btn-clear" class="secondary" style="float:right;padding:2px 8px;font-size:11px">Clear</button>
+      <button id="btn-pause-log" class="secondary" style="float:right;padding:2px 8px;font-size:11px;margin-right:6px">⏸ Pause</button>
+      <button id="btn-toggle-log" class="secondary" style="float:right;padding:2px 8px;font-size:11px;margin-right:6px">Masquer</button>
+    </h2>
+    <div id="log" class="log">En attente de connexion...</div>
+  </div>
+
+</div>
+
+<script>
+// =======================================================
+//  Protocole FitShow
+//  Source : https://github.com/tyge68/fitshow-treadmill
+// =======================================================
+const FS_SERVICE = '0000fff0-0000-1000-8000-00805f9b34fb';
+const FS_READ    = '0000fff1-0000-1000-8000-00805f9b34fb'; // notify
+const FS_WRITE   = '0000fff2-0000-1000-8000-00805f9b34fb'; // write
+
+// Commandes (sans checksum ni 0x03 de fin, ajoutés automatiquement)
+// Protocole adapté pour LJJ-0811FE (découvert par reverse-engineering)
+const CMD = {
+  STATUS:         [0x02, 0x51],                              // heartbeat / request current state
+  WAKE:           [0x02, 0x44, 0x01],                        // déverrouille le tapis
+  STOP:           [0x02, 0x53, 0x03],
+  SPEED_INFO:     [0x02, 0x50, 0x02],                        // read min/max/unit speed
+  INCLINE_INFO:   [0x02, 0x50, 0x03],
+  TOTAL_INFO:     [0x02, 0x50, 0x04],
+  // START/SET_SPEED : [0x02, 0x53, 0x02, speed*10, incline]
+  // Sur LJJ-0811FE, SPEED sert aussi de Start si le tapis est à l'arrêt
+};
+const MSG_END = 0x03;
+const POLL_INTERVAL_MS = 500;
+const MAX_RETRIES = 5;
+
+// =======================================================
+//  État
+// =======================================================
+const state = {
+  device: null,
+  server: null,
+  charRead: null,
+  charWrite: null,
+  connected: false,
+  running: false,
+  speed: 0,
+  incline: 0,
+  setpoint: 1.0,
+  minSpeed: 1,
+  maxSpeed: 8,
+  unitSpeed: 10,     // vitesse en km/h = value / unitSpeed
+  messageQueue: [],
+  lastMessage: null,
+  retries: MAX_RETRIES,
+  pollHandle: null,
+  // Timer local (le protocole ne semble pas exposer directement le temps)
+  startTime: null,
+  elapsed: 0,
+  distance: 0,
+  lastTick: null,
+};
+
+// =======================================================
+//  Helpers
+// =======================================================
+const $ = id => document.getElementById(id);
+
+// État du log
+let logPaused = false;
+// Trames à filtrer quand "masquer polling" est coché :
+//   TX polling : 02 51 51 03
+//   RX stopped : 02 51 00 51 03
+//   RX running : 02 51 ... (17 bytes) — on les garde en "compactant"
+const POLLING_TX_HEX = '02 51 51 03';
+const POLLING_RX_STOPPED_HEX = '02 51 00 51 03';
+let pollingCounter = { tx: 0, rxStopped: 0, rxRunning: 0 };
+let lastPollingRenderTime = 0;
+
+const log = (msg, cls = 'info') => {
+  if (logPaused) return;
+
+  // Filtrage polling si activé
+  if ($('filter-poll')?.checked) {
+    if (msg === `TX : ${POLLING_TX_HEX}`) {
+      pollingCounter.tx++;
+      return renderPollingSummary();
+    }
+    if (msg === `RX : ${POLLING_RX_STOPPED_HEX}`) {
+      pollingCounter.rxStopped++;
+      return renderPollingSummary();
+    }
+    // Les trames RX de 17 bytes (running) commencent par "RX : 02 51" et font 51 chars
+    if (msg.startsWith('RX : 02 51') && msg.length > 20 && msg.length < 60) {
+      pollingCounter.rxRunning++;
+      return renderPollingSummary();
+    }
+  }
+
+  writeLogLine(msg, cls);
+};
+
+function writeLogLine(msg, cls) {
+  const el = $('log');
+  const ts = new Date().toLocaleTimeString();
+  el.innerHTML += `<span class="ts">[${ts}]</span> <span class="${cls}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// Met à jour une seule ligne compteur au lieu de spammer
+function renderPollingSummary() {
+  const now = Date.now();
+  // Mettre à jour au max 2x par seconde pour limiter les reflows
+  if (now - lastPollingRenderTime < 500) return;
+  lastPollingRenderTime = now;
+  const el = $('log');
+  // Supprime l'éventuelle ligne "polling" précédente
+  const lines = el.innerHTML.split('\n');
+  const filtered = lines.filter(l => !l.includes('POLL-SUMMARY'));
+  el.innerHTML = filtered.join('\n');
+  const total = pollingCounter.tx + pollingCounter.rxStopped + pollingCounter.rxRunning;
+  if (total > 0) {
+    const parts = [];
+    if (pollingCounter.tx) parts.push(`TX×${pollingCounter.tx}`);
+    if (pollingCounter.rxStopped) parts.push(`RX-stop×${pollingCounter.rxStopped}`);
+    if (pollingCounter.rxRunning) parts.push(`RX-run×${pollingCounter.rxRunning}`);
+    writeLogLine(`<span class="poll-summary">📊 Polling : ${parts.join(', ')}</span><!-- POLL-SUMMARY -->`, 'info');
+  }
+  el.scrollTop = el.scrollHeight;
+}
+
+function resetPollingCounter() {
+  pollingCounter = { tx: 0, rxStopped: 0, rxRunning: 0 };
+}
+const setStatus = (txt, cls = '') => {
+  $('status-text').textContent = txt;
+  $('status').className = 'status ' + cls;
+};
+const hex = (arr) => {
+  const a = arr.length !== undefined ? arr : new Uint8Array(arr.buffer || arr);
+  return [...a].map(b => b.toString(16).padStart(2, '0')).join(' ');
+};
+const dvToBytes = dv => {
+  const out = new Uint8Array(dv.byteLength);
+  for (let i = 0; i < dv.byteLength; i++) out[i] = dv.getUint8(i);
+  return out;
+};
+
+// Checksum FitShow : XOR de tous les octets à partir de l'index 1 (on saute le 0x02)
+function checksum(bytes) {
+  let cs = 0;
+  for (let i = 1; i < bytes.length; i++) cs ^= bytes[i];
+  return cs;
+}
+
+// Construit une trame complète : [bytes..., checksum, 0x03]
+function buildFrame(bytes) {
+  const cs = checksum(bytes);
+  const frame = new Uint8Array(bytes.length + 2);
+  frame.set(bytes, 0);
+  frame[bytes.length] = cs;
+  frame[bytes.length + 1] = MSG_END;
+  return frame;
+}
+
+// =======================================================
+//  Connexion
+// =======================================================
+async function connect() {
+  try {
+    setStatus('Sélection...', 'warn');
+    log('Ouverture du sélecteur Bluetooth...');
+
+    // On accepte tout pour gérer aussi les tapis sans préfixe FS-
+    const device = await navigator.bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: [FS_SERVICE, 0x1826, 'device_information', 'battery_service'],
+    });
+    log(`Appareil : ${device.name || '(sans nom)'} — ${device.id}`);
+    state.device = device;
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+
+    setStatus('Connexion...', 'warn');
+    state.server = await device.gatt.connect();
+    log('Serveur GATT connecté', 'rx');
+
+    const svc = await state.server.getPrimaryService(FS_SERVICE);
+    log(`Service FitShow 0xFFF0 trouvé ✓`, 'rx');
+
+    state.charRead = await svc.getCharacteristic(FS_READ);
+    await state.charRead.startNotifications();
+    state.charRead.addEventListener('characteristicvaluechanged', onNotification);
+    log('Notifications 0xFFF1 activées', 'info');
+
+    state.charWrite = await svc.getCharacteristic(FS_WRITE);
+    log('Canal write 0xFFF2 prêt', 'info');
+
+    state.connected = true;
+    setStatus(device.name || 'Connecté', 'ok');
+    $('btn-connect').disabled = true;
+    $('btn-disconnect').disabled = false;
+    enableControls(true);
+
+    // Initialisation : demande les infos vitesse/incline puis boucle de polling
+    queueMessage(CMD.SPEED_INFO);
+    queueMessage(CMD.INCLINE_INFO);
+    state.pollHandle = setInterval(pollTick, POLL_INTERVAL_MS);
+
+  } catch (e) {
+    if (e.name === 'NotFoundError') {
+      log('Pas de service FitShow 0xFFF0 sur cet appareil', 'err');
+      setStatus('Incompatible', 'err');
+    } else {
+      log('Erreur : ' + e.message, 'err');
+      setStatus('Échec', 'err');
+    }
+  }
+}
+
+function onDisconnected() {
+  log('Déconnecté du tapis', 'err');
+  setStatus('Déconnecté', 'err');
+  state.connected = false;
+  state.running = false;
+  if (state.pollHandle) { clearInterval(state.pollHandle); state.pollHandle = null; }
+  state.lastMessage = null;
+  state.messageQueue = [];
+  releaseWakeLock();
+  $('btn-connect').disabled = false;
+  $('btn-disconnect').disabled = true;
+  enableControls(false);
+  $('tapis-status').textContent = 'État : non connecté';
+}
+
+async function disconnect() {
+  if (state.connected) {
+    // Envoyer Stop par politesse
+    try { await writeFrame(CMD.STOP); } catch {}
+  }
+  if (state.device?.gatt?.connected) state.device.gatt.disconnect();
+}
+
+// =======================================================
+//  Write / Notifications
+// =======================================================
+async function writeFrame(bytes) {
+  const frame = buildFrame(bytes);
+  log(`TX : ${hex(frame)}`, 'tx');
+  await state.charWrite.writeValue(frame);
+}
+
+function queueMessage(msg) {
+  state.messageQueue.push(msg);
+}
+
+// Commandes qui NE doivent PAS être retransmises (fire-and-forget)
+// Les commandes d'info (SPEED_INFO, INCLINE_INFO, STATUS) peuvent retenter
+// Les commandes d'action (WAKE, START, STOP, SET_SPEED) ne doivent JAMAIS boucler
+function isActionCommand(cmd) {
+  if (!cmd) return false;
+  // Toute commande commençant par 02 53 (action) ou 02 44 (wake) est une action
+  return cmd[0] === 0x02 && (cmd[1] === 0x53 || cmd[1] === 0x44);
+}
+
+// Boucle de polling : envoie commandes en file, sinon ping STATUS
+async function pollTick() {
+  if (!state.connected || !state.charWrite) return;
+  try {
+    if (state.lastMessage) {
+      // On a une commande en attente de réponse
+      if (isActionCommand(state.lastMessage)) {
+        // Action : pas de retry, on abandonne après 1 seconde si pas de réponse
+        const elapsed = Date.now() - (state.lastMessageSentAt || 0);
+        if (elapsed > 1000) {
+          log(`Action sans réponse après 1s, abandon`, 'info');
+          state.lastMessage = null;
+          state.retries = MAX_RETRIES;
+        }
+        return; // NE PAS retransmettre pendant qu'on attend
+      } else {
+        // Info query : retry OK
+        await writeFrame(state.lastMessage);
+      }
+    } else if (state.messageQueue.length > 0) {
+      state.lastMessage = state.messageQueue.shift();
+      state.lastMessageSentAt = Date.now();
+      await writeFrame(state.lastMessage);
+    } else {
+      // ping status
+      state.lastMessage = CMD.STATUS;
+      state.lastMessageSentAt = Date.now();
+      await writeFrame(CMD.STATUS);
+    }
+  } catch (e) {
+    log('Erreur write : ' + e.message, 'err');
+  }
+}
+
+function onNotification(e) {
+  const bytes = dvToBytes(e.target.value);
+  log(`RX : ${hex(bytes)}`, 'rx');
+
+  // Cadre attendu : [0x02, ... , 0x03]
+  if (bytes.length < 3 || bytes[0] !== 0x02 || bytes[bytes.length - 1] !== 0x03) {
+    log('Trame invalide ignorée', 'err');
+    state.retries--;
+    if (state.retries <= 0) { state.lastMessage = null; state.retries = MAX_RETRIES; }
+    return;
+  }
+
+  // Identifie la commande à laquelle répond cette trame
+  if (state.lastMessage) {
+    const cmd = state.lastMessage;
+    // Pour START on compare seulement les 3 premiers octets
+    const compareLen = cmd === CMD.START ? 3 : cmd.length;
+    let match = true;
+    for (let i = 0; i < compareLen && i < bytes.length; i++) {
+      if (cmd[i] !== bytes[i]) { match = false; break; }
+    }
+
+    if (match) {
+      handleResponse(state.lastMessage, bytes);
+      state.lastMessage = null;
+      state.retries = MAX_RETRIES;
+    } else {
+      state.retries--;
+      if (state.retries <= 0) { state.lastMessage = null; state.retries = MAX_RETRIES; }
+    }
+  }
+}
+
+function handleResponse(cmd, bytes) {
+  if (cmd === CMD.SPEED_INFO) {
+    // [0x02, 0x50, 0x02, max, min, unit, cs, 0x03]
+    if (bytes.length >= 7) {
+      state.maxSpeed = bytes[3];
+      state.minSpeed = bytes[4];
+      state.unitSpeed = bytes[5] || 10;
+      log(`Vitesse : min=${state.minSpeed} max=${state.maxSpeed} unit=${state.unitSpeed}`, 'info');
+      // Adapter le slider
+      $('speed-slider').min = state.minSpeed / 10;
+      $('speed-slider').max = state.maxSpeed / 10;
+    }
+  } else if (cmd === CMD.STATUS) {
+    // Longueur de la réponse indique l'état
+    if (bytes.length === 5 && bytes[2] === 0 && bytes[3] === 0x51) {
+      // Stopped
+      if (state.running) log('Tapis arrêté', 'info');
+      state.running = false;
+      state.speed = 0;
+      state.incline = 0;
+      $('tapis-status').textContent = 'État : arrêté';
+    } else if (bytes.length === 17) {
+      // Running - octet 3 = vitesse x10, octet 4 = incline
+      state.running = true;
+      state.speed = bytes[3] / 10;
+      state.incline = bytes[4];
+      // Tenter d'extraire temps/distance/calories depuis les octets restants
+      // Formats observés en rétro-ingénierie FitShow :
+      // [0x02, 0x51, 0x01?, speed, incline, time_hi, time_lo, dist_hi, dist_lo, cal_hi, cal_lo, ...]
+      tryParseStats(bytes);
+      $('tapis-status').textContent = `État : en marche`;
+    } else if (bytes.length > 5 && bytes.length < 17) {
+      // Starting
+      if (!state.running) log('Démarrage en cours...', 'info');
+      $('tapis-status').textContent = 'État : démarrage';
+    }
+    updateMetrics();
+  }
+}
+
+// Interprétation des octets pour la trame STATUS 17 bytes
+// Structure confirmée par capture réelle LJJ-0811FE :
+//   [00] 0x02       début
+//   [01] 0x51       opcode status
+//   [02] 0x04       (state ? sous-commande ?)
+//   [03] speed×10   vitesse en 0.1 km/h
+//   [04] incline    inclinaison
+//   [05] time       temps écoulé en secondes (byte simple, max 255s)
+//   [06] time_hi    extension temps sur longues sessions ?
+//   [07] dist       distance en hectomètres (0.01 km = 10 m), byte simple jusqu'à 2.55 km
+//   [08] dist_hi    extension distance sur longues courses ?
+//   [09] cal_hi     calories sur 16 bits BE
+//   [10] cal_lo
+//   [11..14]        réservés / autres métriques
+//   [15] checksum   XOR des octets 1 à 14
+//   [16] 0x03       fin
+function tryParseStats(bytes) {
+  if (bytes.length < 17) return;
+
+  // Temps : bytes[5] simple, bytes[6] en extension si dépassement 255s (LE)
+  const time = bytes[5] + (bytes[6] << 8);
+
+  // Distance : bytes[7..8] LE en décamètres (1 unité = 10 m)
+  // Confirmé : bytes[7]=20 → 200m = 0.2 km réels
+  const dist_dam = bytes[7] + (bytes[8] << 8);
+  const distance_km = dist_dam / 100;
+
+  // Calories : bytes[9..10] LE, facteur ×10 sur ce modèle
+  const cal_raw = bytes[9] + (bytes[10] << 8);
+  const cal = cal_raw / 10;
+
+  state.elapsed = time;
+  state.distance = distance_km;
+  state.calories = cal;
+
+  // Détection heuristique de l'état veille profonde :
+  // - vitesse = 0, temps = 0, distance = 0, calories = 0
+  // ET l'utilisateur a essayé de démarrer sans succès depuis X secondes
+  const looksDeepSleep = (bytes[3] === 0 && time === 0 && dist_dam === 0 && cal_raw === 0);
+  if (looksDeepSleep && state.startRequestedAt) {
+    const since = Date.now() - state.startRequestedAt;
+    if (since > 5000 && !state.deepSleepWarned) {
+      log('⚠️ Le tapis semble en veille profonde. Essayez une action physique sur le tapis (tap, marcher dessus, télécommande) pour le réveiller.', 'err');
+      $('tapis-status').innerHTML = '⚠️ <b>Veille profonde détectée</b> — action physique requise sur le tapis';
+      state.deepSleepWarned = true;
+    }
+  }
+
+  // Synchronisation du curseur avec la vitesse réelle du tapis
+  syncSpeedUI(bytes[3] / 10);
+
+  // Debug : afficher la trame décortiquée
+  let debugStr = 'Octets :\n';
+  for (let i = 0; i < bytes.length; i++) {
+    const v = bytes[i];
+    debugStr += `  [${i.toString().padStart(2, '0')}] 0x${v.toString(16).padStart(2, '0')} = ${v.toString().padStart(3)}`;
+    if (i === 3) debugStr += ` ← vitesse = ${v/10} km/h`;
+    else if (i === 4) debugStr += ` ← incline = ${v}`;
+    else if (i === 5) debugStr += ` ← temps_lo (${time}s)`;
+    else if (i === 6) debugStr += ` ← temps_hi`;
+    else if (i === 7) debugStr += ` ← dist_lo (${dist_dam} dam = ${distance_km.toFixed(2)} km)`;
+    else if (i === 8) debugStr += ` ← dist_hi`;
+    else if (i === 9) debugStr += ` ← cal_lo (${cal_raw}/10 = ${cal.toFixed(1)} kcal)`;
+    else if (i === 10) debugStr += ` ← cal_hi`;
+    else if (i === bytes.length - 2) debugStr += ` ← checksum`;
+    else if (i === bytes.length - 1) debugStr += ` ← fin 0x03`;
+    debugStr += '\n';
+  }
+  const el = $('debug-frame');
+  if (el) el.textContent = debugStr;
+}
+
+// Synchronise le curseur/slider avec la vitesse réelle du tapis
+// mais seulement si l'utilisateur n'a pas interagi avec les contrôles récemment
+function syncSpeedUI(actualSpeed) {
+  const now = Date.now();
+  // 3 secondes de "grâce" après une interaction utilisateur,
+  // pour qu'on n'écrase pas immédiatement son réglage
+  if (state.lastUserSpeedChangeAt && (now - state.lastUserSpeedChangeAt) < 3000) return;
+  // Ne rien faire si la vitesse est 0 (tapis à l'arrêt, garder le setpoint en mémoire)
+  if (actualSpeed === 0) return;
+  // Synchroniser
+  if (Math.abs(state.setpoint - actualSpeed) > 0.05) {
+    state.setpoint = actualSpeed;
+    $('speed-setpoint').textContent = actualSpeed.toFixed(1);
+    $('speed-slider').value = actualSpeed;
+  }
+}
+
+// =======================================================
+//  Contrôles UI
+// =======================================================
+function enableControls(on) {
+  $('btn-wake').disabled = !on;
+  $('btn-start').disabled = !on;
+  $('btn-stop').disabled = !on;
+  $('btn-sp-up').disabled = !on;
+  $('btn-sp-down').disabled = !on;
+  $('speed-slider').disabled = !on;
+  document.querySelectorAll('.speed-presets button').forEach(b => b.disabled = !on);
+}
+
+function setSpeed(s) {
+  s = Math.max(state.minSpeed / 10, Math.min(state.maxSpeed / 10, s));
+  s = Math.round(s * 10) / 10;
+  state.setpoint = s;
+  state.lastUserSpeedChangeAt = Date.now();
+  $('speed-setpoint').textContent = s.toFixed(1);
+  $('speed-slider').value = s;
+  // Sur LJJ-0811FE, SET_SPEED fonctionne aussi bien à l'arrêt qu'en marche
+  if (state.connected) {
+    const cmd = [0x02, 0x53, 0x02, Math.round(s * 10), state.incline || 0];
+    queueMessage(cmd);
+  }
+}
+
+function updateMetrics() {
+  $('m-speed').textContent = state.speed.toFixed(1);
+  const m = Math.floor(state.elapsed / 60), s = state.elapsed % 60;
+  $('m-time').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  $('m-dist').textContent = (state.distance || 0).toFixed(2);
+  $('m-cal').textContent = state.calories !== undefined ? state.calories.toFixed(1) : '—';
+}
+
+// =======================================================
+//  Event handlers
+// =======================================================
+$('btn-connect').onclick = connect;
+$('btn-disconnect').onclick = disconnect;
+
+$('btn-wake').onclick = () => {
+  log('Réveil du tapis...', 'tx');
+  queueMessage(CMD.WAKE);
+};
+
+$('btn-start').onclick = () => {
+  log('Démarrage (Wake + Speed)...', 'tx');
+  state.startRequestedAt = Date.now();
+  state.deepSleepWarned = false;
+  requestWakeLock(); // Garder l'écran allumé
+  // Séquence de démarrage LJJ-0811FE : Wake puis Speed
+  queueMessage(CMD.WAKE);
+  const s = Math.round(state.setpoint * 10);
+  const speedCmd = [0x02, 0x53, 0x02, s, 0];
+  queueMessage(speedCmd);
+  state.lastUserSpeedChangeAt = Date.now();
+  setTimeout(() => {
+    if (state.connected) {
+      log(`Confirmation vitesse à ${state.setpoint} km/h`, 'tx');
+      const s2 = Math.round(state.setpoint * 10);
+      queueMessage([0x02, 0x53, 0x02, s2, state.incline || 0]);
+      state.lastUserSpeedChangeAt = Date.now();
+    }
+  }, 1500);
+  state.running = true;
+};
+$('btn-stop').onclick = () => {
+  log('Envoi Stop...', 'tx');
+  queueMessage(CMD.STOP);
+  releaseWakeLock();
+};
+
+$('btn-sp-up').onclick = () => setSpeed(state.setpoint + 0.5);
+$('btn-sp-down').onclick = () => setSpeed(state.setpoint - 0.5);
+$('speed-slider').oninput = e => {
+  state.setpoint = parseFloat(e.target.value);
+  state.lastUserSpeedChangeAt = Date.now();
+  $('speed-setpoint').textContent = state.setpoint.toFixed(1);
+};
+$('speed-slider').onchange = e => setSpeed(parseFloat(e.target.value));
+
+document.querySelectorAll('.speed-presets button').forEach(b => {
+  b.onclick = () => setSpeed(parseInt(b.dataset.speed));
+});
+
+$('btn-clear').onclick = () => {
+  $('log').innerHTML = '';
+  resetPollingCounter();
+};
+$('btn-pause-log').onclick = () => {
+  logPaused = !logPaused;
+  $('btn-pause-log').textContent = logPaused ? '▶ Reprendre' : '⏸ Pause';
+  $('btn-pause-log').style.background = logPaused ? 'var(--warn)' : '';
+  $('btn-pause-log').style.color = logPaused ? '#000' : '';
+};
+$('filter-poll').onchange = () => {
+  resetPollingCounter();
+  // Nettoyer les résumés polling actuels
+  const el = $('log');
+  const lines = el.innerHTML.split('\n');
+  el.innerHTML = lines.filter(l => !l.includes('POLL-SUMMARY')).join('\n');
+};
+$('btn-toggle-log').onclick = () => {
+  const el = $('log');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+  $('btn-toggle-log').textContent = el.style.display === 'none' ? 'Afficher' : 'Masquer';
+};
+
+// =======================================================
+//  Init
+// =======================================================
+if (!navigator.bluetooth) {
+  $('unsupported').style.display = '';
+  document.querySelectorAll('button').forEach(b => b.disabled = true);
+  log('navigator.bluetooth non disponible', 'err');
+} else {
+  log('Prêt. Cliquez "Connecter le tapis".', 'info');
+}
+
+// =======================================================
+//  Titre d'onglet dynamique (temps de course + vitesse)
+// =======================================================
+const BASE_TITLE = 'Tapis LJJ';
+function updateTabTitle() {
+  if (state.connected && state.elapsed > 0) {
+    const m = Math.floor(state.elapsed / 60);
+    const s = state.elapsed % 60;
+    const timeStr = `${m}:${s.toString().padStart(2, '0')}`;
+    const speedStr = state.speed > 0 ? ` · ${state.speed.toFixed(1)} km/h` : '';
+    document.title = `▶ ${timeStr}${speedStr} — ${BASE_TITLE}`;
+  } else if (state.connected) {
+    document.title = `● ${BASE_TITLE}`;
+  } else {
+    document.title = BASE_TITLE;
+  }
+}
+// Mettre à jour le titre chaque seconde
+setInterval(updateTabTitle, 1000);
+
+// =======================================================
+//  Installation PWA (Android/Desktop Chrome)
+// =======================================================
+let deferredInstallPrompt = null;
+
+// Enregistrer le service worker (nécessaire pour le prompt d'installation)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => log(`Service worker actif (PWA installable)`, 'info'))
+      .catch(err => log(`Service worker indisponible : ${err.message}`, 'err'));
+  });
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Afficher la bannière si pas déjà installée ni refusée
+  if (localStorage.getItem('install-dismissed') !== '1' &&
+      !window.matchMedia('(display-mode: standalone)').matches) {
+    $('install-banner').style.display = '';
+  }
+});
+
+$('btn-install').onclick = async () => {
+  if (!deferredInstallPrompt) {
+    // iOS ou autre : pas d'API, on affiche des instructions
+    alert('Pour installer :\n\niOS (Safari) : bouton Partager → "Sur l\'écran d\'accueil"\n\nAutres : ouvrez le menu du navigateur et cherchez "Installer l\'application" ou "Ajouter à l\'écran d\'accueil".');
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const choice = await deferredInstallPrompt.userChoice;
+  if (choice.outcome === 'accepted') {
+    log('Application installée ✓', 'rx');
+  }
+  deferredInstallPrompt = null;
+  $('install-banner').style.display = 'none';
+};
+
+$('btn-install-close').onclick = () => {
+  $('install-banner').style.display = 'none';
+  localStorage.setItem('install-dismissed', '1');
+};
+
+// Détection iOS (pas d'API beforeinstallprompt) : afficher la bannière quand même
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+if (isIOS && !isStandalone && localStorage.getItem('install-dismissed') !== '1') {
+  $('install-msg').textContent = 'Pour installer : bouton Partager → "Sur l\'écran d\'accueil"';
+  $('btn-install').style.display = 'none';
+  $('install-banner').style.display = '';
+}
+
+// =======================================================
+//  Protection contre fermeture accidentelle
+// =======================================================
+window.addEventListener('beforeunload', (e) => {
+  // Ne montrer l'alerte que si une session est en cours (tapis en marche)
+  if (state.connected && state.speed > 0) {
+    e.preventDefault();
+    e.returnValue = 'Le tapis est en marche. Fermer la page va interrompre la session.';
+    return e.returnValue;
+  }
+});
+
+// Sur mobile, empêcher le scroll/pinch qui peut fermer la page par erreur
+document.addEventListener('touchmove', (e) => {
+  if (e.scale !== 1) e.preventDefault();
+}, { passive: false });
+
+// Empêcher le double-tap zoom qui peut déclencher des actions non voulues
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 300) e.preventDefault();
+  lastTouchEnd = now;
+}, false);
+
+// Wake lock : empêcher l'écran de s'éteindre pendant une session
+let wakeLockSentinel = null;
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+      log('🔒 Écran maintenu allumé pendant la session', 'info');
+    } catch (e) {
+      // Silencieux, feature optionnelle
+    }
+  }
+}
+function releaseWakeLock() {
+  if (wakeLockSentinel) {
+    wakeLockSentinel.release();
+    wakeLockSentinel = null;
+  }
+}
+// Réacquisition du wake lock au retour sur l'onglet
+document.addEventListener('visibilitychange', () => {
+  if (wakeLockSentinel !== null && document.visibilityState === 'visible' && state.speed > 0) {
+    requestWakeLock();
+  }
+});
+</script>
+
+</body>
+</html>
