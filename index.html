@@ -609,7 +609,7 @@ function tryParseStats(bytes) {
   // Distance : bytes[7..8] LE en décamètres (1 unité = 10 m)
   // Confirmé : bytes[7]=20 → 200m = 0.2 km réels
   const dist_dam = bytes[7] + (bytes[8] << 8);
-  const distance_km = dist_dam / 100;
+  const distance_km = dist_dam / 1000;
 
   // Calories : bytes[9..10] LE, facteur ×10 sur ce modèle
   const cal_raw = bytes[9] + (bytes[10] << 8);
